@@ -1,12 +1,40 @@
+
+import ipywidgets as widgets
+import mysql.connector
 import cv2
 import imutils
 import numpy as np
 import pytesseract
+import matplotlib.pyplot as plt
 from PIL import Image
+import RPi.GPIO as GPIO
 
+
+from time import sleep
+
+GPIO.setmode(GPIO.BCM)
+led1= 12
+led2= 6
+GPIO.setup(led1, GPIO.OUT)
+GPIO.setup(led2, GPIO.OUT)
+
+servo = 17
+GPIO.setup(servo, GPIO.OUT)
+p = GPIO.PWM(servo, 50) # GPIO 17 for PWM with 50Hz
+p.start(7.5) # Initialization
+
+uploader = widgets.FileUpload()
+display(uploader)
+
+uploader.value
+uploaded_file = uploader.value[0]
+with open("./saved-output.jpg", "wb") as fp:
+    fp.write(uploaded_file.content)
+
+widgets.Image(value=uploaded_file.content.tobytes())
 
 #TEXT DTECTION 
-img = cv2.imread('2.jpg',cv2.IMREAD_COLOR)
+img = cv2.imread('./saved-output.jpg',cv2.IMREAD_COLOR)
 
 img = cv2.resize(img, (620,480) )
 
@@ -57,22 +85,53 @@ Cropped = gray[topx:bottomx+1, topy:bottomy+1]
 
 #Read the number plate
 text = pytesseract.image_to_string(Cropped, config='-l eng --oem 1 --psm 12')
-print("Detected Number is:",text)
+print("La placa detectada es:",text)
 
-cv2.imshow('image',img)
-cv2.imshow('Cropped',Cropped)
+#cv2.imshow('image',img)
+#cv2.imshow('Cropped',Cropped)
 
-##########################################################################
+#print(img)
+#print(Cropped)
 
-#Database conection:
+#cv2.waitKey(0)
+#cv2.destroyAllWindows()
 
+plt.imshow(img)
+plt.title('Imagen')
+plt.show
 
+plt.imshow(Cropped)
+plt.title('Placa detectada')
+plt.show
 
-##########################################################################
+#Listado de todas las tablas de una base de datos de MySQL.
+conexion1=mysql.connector.connect(host="localhost", 
+                                  user="admin", 
+                                  passwd="1234", 
+                                  database="vehiculos")
 
-#Data comparisson:
+cursor1=conexion1.cursor()
+cursor1.execute("select placa from app_autos_vehiculo")
 
+linea = text.rstrip()
+resultado = False
+for fila in cursor1:
+    if linea == fila[0]:
+        resultado = True
+conexion1.close() 
 
+if resultado:
+    print("La placa " + linea + " se encuentra registrada en el sistema")
+    GPIO.output(led1,True)
+    p.ChangeDutyCycle(2.5)
+    sleep(3)
+    GPIO.output(led1,False)
+    p.ChangeDutyCycle(7.5)
+else:
+    print("La placa " + linea + " no se encuentra registrada en el sistema")
+    GPIO.output(led2,True)
+    sleep(3)
+    GPIO.output(led2,False)
 
-cv2.waitKey(0)
-cv2.destroyAllWindows()
+p.ChangeDutyCycle(0)
+GPIO.cleanup()
