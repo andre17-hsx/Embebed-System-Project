@@ -1,4 +1,3 @@
 # Proyecto-Embebidos
-Proyecto embebidos
-Embebed Systems
+Embebed Systems Project
 Text reconigtion for vehicles
